@@ -46,6 +46,15 @@
 
   main { max-width: 520px; margin: 0 auto; padding: 24px 18px 48px; }
 
+  .brand { display: flex; align-items: center; min-height: 72px; margin-bottom: 18px; }
+  .brand img { display: block; max-height: 72px; max-width: 100%; width: auto; height: auto; }
+  .brand .ph {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 72px; border: 2px dashed var(--line); border-radius: 12px;
+    color: var(--muted); font-size: 15px;
+  }
+  .brand .ph[hidden] { display: none; }
+
   h1 {
     font: 800 clamp(30px, 8vw, 40px)/1.05 var(--display);
     letter-spacing: -0.02em;
@@ -53,12 +62,21 @@
     color: var(--navy);
   }
 
-  .totals { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; margin-bottom: 22px; }
+  .totals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
+  .totals .stat:first-child { grid-column: 1 / -1; }
   .stat { background: var(--navy); color: #fff; border-radius: 14px; padding: 16px 18px; }
   .stat.secondary { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
   .stat .label { font-size: 14px; opacity: .8; }
   .stat .value { font: 800 clamp(40px, 12vw, 56px)/1 var(--display); letter-spacing: -0.03em; margin-top: 6px; font-variant-numeric: tabular-nums; }
   .stat.secondary .value { font-size: clamp(32px, 9vw, 42px); color: var(--teal); }
+  .stat.lost .value { color: var(--danger); }
+
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 4px; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label { margin: 0; text-align: center; padding: 11px 8px; border-radius: 9px; cursor: pointer; font-weight: 600; color: var(--muted); }
+  .seg input:checked + label { background: var(--navy); color: #fff; }
+  .seg input[value="extraviada"]:checked + label { background: var(--danger); }
+  .seg input:focus-visible + label { outline: 3px solid var(--mustard); outline-offset: 2px; }
 
   form, .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
   .field { margin-bottom: 16px; }
@@ -100,6 +118,7 @@
   .history .n { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .history .q { font: 800 20px/1 var(--display); font-variant-numeric: tabular-nums; }
   .history .q.neg { color: var(--danger); }
+  .tag { display: inline-block; font-size: 13px; font-weight: 600; color: var(--danger); border: 1.5px solid var(--danger); border-radius: 6px; padding: 0 6px; margin-right: 6px; }
   .empty { color: var(--muted); padding: 16px; }
 
   .panel[hidden] { display: none; }
@@ -114,8 +133,14 @@
 <body>
 <div class="edge" aria-hidden="true"></div>
 <main>
-<img src="./images/grupoGuanabara.png" style="display: block; margin:auto; width: 50%;" /> 
-<h1>Controle de mantas</h1>
+  <!-- LOGO: coloque o arquivo logo.png (ou troque o src abaixo) na mesma pasta do index.html -->
+  <div class="brand">
+    <img src="grupoGuanabara.png" alt="Logo da empresa"
+         onerror="this.hidden=true;document.getElementById('logoPh').hidden=false;">
+    <div class="ph" id="logoPh" hidden>Espaço para a logo da empresa (logo.png)</div>
+  </div>
+
+  <h1>Controle de mantas</h1>
 
   <section class="panel" id="pinPanel" hidden>
     <p>Digite o PIN de acesso. Ele fica salvo neste aparelho.</p>
@@ -137,21 +162,33 @@
         <div class="label">Hoje</div>
         <div class="value" id="today">–</div>
       </div>
+      <div class="stat secondary lost">
+        <div class="label">Extraviadas</div>
+        <div class="value" id="lost">–</div>
+      </div>
     </div>
 
     <form id="form" novalidate>
+      <div class="field">
+        <div class="seg" role="radiogroup" aria-label="Tipo de registro">
+          <input type="radio" name="type" id="t-diario" value="diario" checked>
+          <label for="t-diario">Quantidade do dia</label>
+          <input type="radio" name="type" id="t-extraviada" value="extraviada">
+          <label for="t-extraviada">Extraviadas</label>
+        </div>
+      </div>
       <div class="field">
         <label for="date">Data</label>
         <input id="date" type="date" required>
       </div>
       <div class="field">
-        <label for="qty">Quantidade de mantas</label>
+        <label for="qty" id="qtyLabel">Quantidade de mantas</label>
         <div class="stepper">
           <button class="step" type="button" id="minus" aria-label="Diminuir">−</button>
           <input id="qty" type="number" inputmode="numeric" step="1" value="0" required>
           <button class="step" type="button" id="plus" aria-label="Aumentar">+</button>
         </div>
-        <div class="hint">Use um valor negativo para saídas ou correções.</div>
+        <div class="hint" id="qtyHint">Use um valor negativo para saídas ou correções.</div>
       </div>
       <div class="field">
         <label for="note">Observação (opcional)</label>
@@ -169,11 +206,13 @@
 </main>
 
 <script>
-/* ============ CONFIGURAÇÃO ============*/
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3dQhKm6hibshyV1VyBK-AN7fr6ZJG2jYPHszitKTaCtjHSM2g2J-oedHj3RvR9Xgm/exec";
+/* ============ CONFIGURAÇÃO ============
+   Cole aqui a URL do Web App do Google Apps Script (termina em /exec). */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwyfpCv05nU0sRPTKj1goBUU8CynmvTgvthb908dWr7sPWocwoAUFZnygdLS4ukLcps/exec";
+/* ====================================== */
 
 const $ = id => document.getElementById(id);
-const PIN_KEY = "127673";
+const PIN_KEY = "mantas_pin";
 
 function todayISO() {
   const d = new Date();
@@ -228,13 +267,15 @@ async function load() {
 
 function render(entries) {
   const today = todayISO();
-  let total = 0, hoje = 0;
+  let total = 0, hoje = 0, lost = 0;
   for (const e of entries) {
+    if (e.type === "extraviada") { lost += e.qty; continue; }
     total += e.qty;
     if (e.date === today) hoje += e.qty;
   }
   $("total").textContent = total;
   $("today").textContent = hoje;
+  $("lost").textContent = lost;
 
   const ul = $("history");
   ul.innerHTML = "";
@@ -245,7 +286,12 @@ function render(entries) {
   entries.slice(-10).reverse().forEach(e => {
     const li = document.createElement("li");
     const d = document.createElement("span"); d.className = "d"; d.textContent = brDate(e.date);
-    const n = document.createElement("span"); n.className = "n"; n.textContent = e.note;
+    const n = document.createElement("span"); n.className = "n";
+    if (e.type === "extraviada") {
+      const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = "Extraviadas";
+      n.appendChild(tag);
+    }
+    n.appendChild(document.createTextNode(e.note));
     const q = document.createElement("span"); q.className = "q" + (e.qty < 0 ? " neg" : "");
     q.textContent = (e.qty > 0 ? "+" : "") + e.qty;
     li.append(d, n, q);
@@ -258,6 +304,7 @@ async function submitEntry(ev) {
   const pin = localStorage.getItem(PIN_KEY);
   const date = $("date").value;
   const qty = parseInt($("qty").value, 10);
+  const type = currentType();
   if (!date) return setStatus("Escolha a data.", "err");
   if (!Number.isInteger(qty) || qty === 0) return setStatus("Informe uma quantidade diferente de zero.", "err");
 
@@ -269,11 +316,11 @@ async function submitEntry(ev) {
     const res = await fetch(SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ pin, date, qty, note: $("note").value.trim() })
+      body: JSON.stringify({ pin, date, qty, note: $("note").value.trim(), type })
     });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
-    setStatus(`Registrado: ${qty > 0 ? "+" : ""}${qty} em ${brDate(date)}.`, "ok");
+    setStatus(`${type === "extraviada" ? "Extraviadas registradas" : "Registrado"}: ${qty > 0 ? "+" : ""}${qty} em ${brDate(date)}.`, "ok");
     $("qty").value = 0;
     $("note").value = "";
     await refresh();
@@ -293,12 +340,25 @@ async function refresh() {
   } catch (_) { /* mantém a tela atual */ }
 }
 
+function currentType() {
+  return document.querySelector('input[name="type"]:checked').value;
+}
+function applyType() {
+  const lost = currentType() === "extraviada";
+  $("qtyLabel").textContent = lost ? "Mantas extraviadas" : "Quantidade de mantas";
+  $("qtyHint").textContent = lost
+    ? "Use um valor negativo para corrigir um lançamento ou se a manta for encontrada."
+    : "Use um valor negativo para saídas ou correções.";
+  $("submit").textContent = lost ? "Registrar extraviadas" : "Registrar quantidade";
+}
+
 function bump(delta) {
   const cur = parseInt($("qty").value, 10) || 0;
   $("qty").value = cur + delta;
 }
 
 $("date").value = todayISO();
+document.querySelectorAll('input[name="type"]').forEach(r => r.addEventListener("change", applyType));
 $("plus").addEventListener("click", () => bump(1));
 $("minus").addEventListener("click", () => bump(-1));
 $("form").addEventListener("submit", submitEntry);
