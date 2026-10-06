@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Controle de mantas</title>
+<meta name="theme-color" content="#1c2b4a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1c2b4a;
+    --mustard: #e0a82e;
+    --teal: #2f8f8b;
+    --paper: #f3f5f8;
+    --card: #ffffff;
+    --ink: #16202f;
+    --muted: #5d6b82;
+    --line: #d9dfe8;
+    --danger: #b3382c;
+    --ok: #1f7a4d;
+    --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 17px/1.45 var(--body);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Faixa de manta no topo: o único elemento "decorativo" */
+  .edge {
+    height: 22px;
+    background:
+      linear-gradient(to bottom,
+        var(--navy) 0 30%, var(--mustard) 30% 45%, var(--navy) 45% 55%,
+        var(--teal) 55% 70%, var(--navy) 70% 100%);
+    padding-top: env(safe-area-inset-top, 0px);
+    box-sizing: content-box;
+  }
+
+  main { max-width: 520px; margin: 0 auto; padding: 24px 18px 48px; }
+
+  h1 {
+    font: 800 clamp(30px, 8vw, 40px)/1.05 var(--display);
+    letter-spacing: -0.02em;
+    margin: 0 0 20px;
+    color: var(--navy);
+  }
+
+  .totals { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; margin-bottom: 22px; }
+  .stat { background: var(--navy); color: #fff; border-radius: 14px; padding: 16px 18px; }
+  .stat.secondary { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
+  .stat .label { font-size: 14px; opacity: .8; }
+  .stat .value { font: 800 clamp(40px, 12vw, 56px)/1 var(--display); letter-spacing: -0.03em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .stat.secondary .value { font-size: clamp(32px, 9vw, 42px); color: var(--teal); }
+
+  form, .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .field { margin-bottom: 16px; }
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
+  .hint { color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+  input[type="date"], input[type="text"], input[type="password"], input[type="number"] {
+    width: 100%; font: inherit; color: inherit; background: #fff;
+    border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; min-height: 48px;
+  }
+  input:focus-visible, button:focus-visible { outline: 3px solid var(--mustard); outline-offset: 2px; }
+
+  .stepper { display: grid; grid-template-columns: 56px 1fr 56px; gap: 8px; }
+  .stepper input { text-align: center; font: 800 28px/1 var(--display); font-variant-numeric: tabular-nums; }
+  .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .stepper input[type=number] { -moz-appearance: textfield; }
+  .step {
+    font: 600 28px/1 var(--display); background: #fff; color: var(--navy);
+    border: 1.5px solid var(--line); border-radius: 10px; cursor: pointer; min-height: 48px;
+  }
+  .step:active { background: var(--paper); }
+
+  .primary {
+    width: 100%; min-height: 52px; font: 600 18px/1 var(--body); color: #fff; background: var(--navy);
+    border: 0; border-radius: 12px; cursor: pointer;
+  }
+  .primary:hover { background: #24375e; }
+  .primary:disabled { opacity: .6; cursor: progress; }
+
+  .status { min-height: 24px; margin: 12px 2px 0; font-weight: 500; }
+  .status.ok { color: var(--ok); }
+  .status.err { color: var(--danger); }
+
+  h2 { font: 600 20px/1.2 var(--display); margin: 28px 0 10px; color: var(--navy); }
+  ul.history { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+  .history li { display: grid; grid-template-columns: 92px 1fr auto; gap: 10px; align-items: baseline; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .history li:last-child { border-bottom: 0; }
+  .history .d { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .history .n { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history .q { font: 800 20px/1 var(--display); font-variant-numeric: tabular-nums; }
+  .history .q.neg { color: var(--danger); }
+  .empty { color: var(--muted); padding: 16px; }
+
+  .panel[hidden] { display: none; }
+  .panel p { margin: 0 0 14px; }
+  .linkbtn { background: none; border: 0; color: var(--muted); font: inherit; text-decoration: underline; cursor: pointer; padding: 8px 0; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .primary, .step { transition: background-color .15s; }
+  }
+</style>
+</head>
+<body>
+<div class="edge" aria-hidden="true"></div>
+<main>
+<img src="./images/grupoGuanabara.png" style="display: block; margin:auto; width: 50%;" /> 
+<h1>Controle de mantas</h1>
+
+  <section class="panel" id="pinPanel" hidden>
+    <p>Digite o PIN de acesso. Ele fica salvo neste aparelho.</p>
+    <div class="field">
+      <label for="pin">PIN</label>
+      <input id="pin" type="password" autocomplete="current-password" inputmode="text">
+    </div>
+    <button class="primary" id="pinSave" type="button">Entrar</button>
+    <div class="status err" id="pinStatus" role="alert"></div>
+  </section>
+
+  <div id="app" hidden>
+    <div class="totals" aria-live="polite">
+      <div class="stat">
+        <div class="label">Total acumulado</div>
+        <div class="value" id="total">–</div>
+      </div>
+      <div class="stat secondary">
+        <div class="label">Hoje</div>
+        <div class="value" id="today">–</div>
+      </div>
+    </div>
+
+    <form id="form" novalidate>
+      <div class="field">
+        <label for="date">Data</label>
+        <input id="date" type="date" required>
+      </div>
+      <div class="field">
+        <label for="qty">Quantidade de mantas</label>
+        <div class="stepper">
+          <button class="step" type="button" id="minus" aria-label="Diminuir">−</button>
+          <input id="qty" type="number" inputmode="numeric" step="1" value="0" required>
+          <button class="step" type="button" id="plus" aria-label="Aumentar">+</button>
+        </div>
+        <div class="hint">Use um valor negativo para saídas ou correções.</div>
+      </div>
+      <div class="field">
+        <label for="note">Observação (opcional)</label>
+        <input id="note" type="text" maxlength="200" autocomplete="off">
+      </div>
+      <button class="primary" id="submit" type="submit">Registrar quantidade</button>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+    </form>
+
+    <h2>Últimos registros</h2>
+    <ul class="history" id="history"></ul>
+
+    <button class="linkbtn" id="logout" type="button">Trocar PIN</button>
+  </div>
+</main>
+
+<script>
+/* ============ CONFIGURAÇÃO ============*/
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3dQhKm6hibshyV1VyBK-AN7fr6ZJG2jYPHszitKTaCtjHSM2g2J-oedHj3RvR9Xgm/exec";
+
+const $ = id => document.getElementById(id);
+const PIN_KEY = "127673";
+
+function todayISO() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function brDate(iso) {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+function setStatus(msg, kind) {
+  const el = $("status");
+  el.textContent = msg || "";
+  el.className = "status" + (kind ? " " + kind : "");
+}
+
+function showPin(msg) {
+  $("app").hidden = true;
+  $("pinPanel").hidden = false;
+  $("pinStatus").textContent = msg || "";
+  $("pin").focus();
+}
+function showApp() {
+  $("pinPanel").hidden = true;
+  $("app").hidden = false;
+}
+
+async function load() {
+  const pin = localStorage.getItem(PIN_KEY);
+  if (!pin) return showPin();
+  if (!SCRIPT_URL.startsWith("https://")) {
+    showApp();
+    return setStatus("Configure SCRIPT_URL no index.html com a URL do Web App.", "err");
+  }
+  try {
+    const res = await fetch(`${SCRIPT_URL}?pin=${encodeURIComponent(pin)}`);
+    const data = await res.json();
+    if (!data.ok) {
+      if (data.error === "PIN inválido") {
+        localStorage.removeItem(PIN_KEY);
+        return showPin("PIN inválido. Tente novamente.");
+      }
+      throw new Error(data.error);
+    }
+    showApp();
+    render(data.entries);
+  } catch (err) {
+    showApp();
+    setStatus("Não foi possível carregar os registros. Verifique a conexão e a URL do Web App.", "err");
+  }
+}
+
+function render(entries) {
+  const today = todayISO();
+  let total = 0, hoje = 0;
+  for (const e of entries) {
+    total += e.qty;
+    if (e.date === today) hoje += e.qty;
+  }
+  $("total").textContent = total;
+  $("today").textContent = hoje;
+
+  const ul = $("history");
+  ul.innerHTML = "";
+  if (!entries.length) {
+    ul.innerHTML = '<li class="empty">Nenhum registro ainda. Informe a quantidade de hoje acima.</li>';
+    return;
+  }
+  entries.slice(-10).reverse().forEach(e => {
+    const li = document.createElement("li");
+    const d = document.createElement("span"); d.className = "d"; d.textContent = brDate(e.date);
+    const n = document.createElement("span"); n.className = "n"; n.textContent = e.note;
+    const q = document.createElement("span"); q.className = "q" + (e.qty < 0 ? " neg" : "");
+    q.textContent = (e.qty > 0 ? "+" : "") + e.qty;
+    li.append(d, n, q);
+    ul.appendChild(li);
+  });
+}
+
+async function submitEntry(ev) {
+  ev.preventDefault();
+  const pin = localStorage.getItem(PIN_KEY);
+  const date = $("date").value;
+  const qty = parseInt($("qty").value, 10);
+  if (!date) return setStatus("Escolha a data.", "err");
+  if (!Number.isInteger(qty) || qty === 0) return setStatus("Informe uma quantidade diferente de zero.", "err");
+
+  const btn = $("submit");
+  btn.disabled = true;
+  setStatus("Salvando…");
+  try {
+    // text/plain evita a verificação prévia (preflight) de CORS no Apps Script
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ pin, date, qty, note: $("note").value.trim() })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    setStatus(`Registrado: ${qty > 0 ? "+" : ""}${qty} em ${brDate(date)}.`, "ok");
+    $("qty").value = 0;
+    $("note").value = "";
+    await refresh();
+  } catch (err) {
+    setStatus("Não foi possível salvar. Confira a conexão e tente de novo.", "err");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function refresh() {
+  const pin = localStorage.getItem(PIN_KEY);
+  try {
+    const res = await fetch(`${SCRIPT_URL}?pin=${encodeURIComponent(pin)}`);
+    const data = await res.json();
+    if (data.ok) render(data.entries);
+  } catch (_) { /* mantém a tela atual */ }
+}
+
+function bump(delta) {
+  const cur = parseInt($("qty").value, 10) || 0;
+  $("qty").value = cur + delta;
+}
+
+$("date").value = todayISO();
+$("plus").addEventListener("click", () => bump(1));
+$("minus").addEventListener("click", () => bump(-1));
+$("form").addEventListener("submit", submitEntry);
+$("pinSave").addEventListener("click", () => {
+  const v = $("pin").value.trim();
+  if (!v) return ($("pinStatus").textContent = "Digite o PIN.");
+  localStorage.setItem(PIN_KEY, v);
+  $("pin").value = "";
+  load();
+});
+$("pin").addEventListener("keydown", e => { if (e.key === "Enter") $("pinSave").click(); });
+$("logout").addEventListener("click", () => { localStorage.removeItem(PIN_KEY); showPin(); });
+
+load();
+</script>
+</body>
+</html>
