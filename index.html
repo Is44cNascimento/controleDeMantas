@@ -160,7 +160,7 @@
         <div class="value" id="total">–</div>
       </div>
       <div class="stat secondary">
-        <div class="label">Hoje</div>
+        <div class="label">Quantidade do dia</div>
         <div class="value" id="today">–</div>
       </div>
       <div class="stat secondary lost">
@@ -220,6 +220,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwyfpCv05nU0sRPTKj1g
 
 const $ = id => document.getElementById(id);
 const PIN_KEY = "mantas_pin";
+let allEntries = [];
 
 function todayISO() {
   const d = new Date();
@@ -272,19 +273,42 @@ async function load() {
   }
 }
 
-function render(entries) {
-  const today = todayISO();
-  let total = 0, hoje = 0, lost = 0, sent = 0;
-  for (const e of entries) {
-    if (e.type === "extraviada") { lost += e.qty; total -= e.qty; continue; }
-    if (e.type === "enviada") { sent += e.qty; total -= e.qty; continue; }
-    total += e.qty;
-    if (e.date === today) hoje += e.qty;
+function toInt(v) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function selectedDate() {
+  return $("date").value || todayISO();
+}
+
+function renderStats() {
+  const date = selectedDate();
+  let total = 0, dayQty = 0, dayLost = 0, daySent = 0;
+  for (const e of allEntries) {
+    const qty = toInt(e.qty);
+    if (e.type === "extraviada") {
+      total -= qty;
+      if (e.date === date) dayLost += qty;
+      continue;
+    }
+    if (e.type === "enviada") {
+      total -= qty;
+      if (e.date === date) daySent += qty;
+      continue;
+    }
+    total += qty;
+    if (e.date === date) dayQty += qty;
   }
   $("total").textContent = total;
-  $("today").textContent = hoje;
-  $("lost").textContent = lost;
-  $("sent").textContent = sent;
+  $("today").textContent = dayQty;
+  $("lost").textContent = dayLost;
+  $("sent").textContent = daySent;
+}
+
+function render(entries) {
+  allEntries = Array.isArray(entries) ? entries : [];
+  renderStats();
 
   const ul = $("history");
   ul.innerHTML = "";
@@ -378,6 +402,7 @@ function bump(delta) {
 }
 
 $("date").value = todayISO();
+$("date").addEventListener("change", renderStats);
 document.querySelectorAll('input[name="type"]').forEach(r => r.addEventListener("change", applyType));
 $("plus").addEventListener("click", () => bump(1));
 $("minus").addEventListener("click", () => bump(-1));
