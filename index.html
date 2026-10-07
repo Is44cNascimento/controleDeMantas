@@ -71,11 +71,12 @@
   .stat.secondary .value { font-size: clamp(32px, 9vw, 42px); color: var(--teal); }
   .stat.lost .value { color: var(--danger); }
 
-  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 4px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 4px; }
   .seg input { position: absolute; opacity: 0; pointer-events: none; }
   .seg label { margin: 0; text-align: center; padding: 11px 8px; border-radius: 9px; cursor: pointer; font-weight: 600; color: var(--muted); }
   .seg input:checked + label { background: var(--navy); color: #fff; }
   .seg input[value="extraviada"]:checked + label { background: var(--danger); }
+  .seg input[value="enviada"]:checked + label { background: var(--teal); }
   .seg input:focus-visible + label { outline: 3px solid var(--mustard); outline-offset: 2px; }
 
   form, .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
@@ -175,6 +176,8 @@
           <label for="t-diario">Quantidade do dia</label>
           <input type="radio" name="type" id="t-extraviada" value="extraviada">
           <label for="t-extraviada">Extraviadas</label>
+          <input type="radio" name="type" id="t-enviada" value="enviada">
+          <label for="t-enviada">Quantidade enviada</label>
         </div>
       </div>
       <div class="field">
@@ -269,7 +272,8 @@ function render(entries) {
   const today = todayISO();
   let total = 0, hoje = 0, lost = 0;
   for (const e of entries) {
-    if (e.type === "extraviada") { lost += e.qty; continue; }
+    if (e.type === "extraviada") { lost += e.qty; total -= e.qty; continue; }
+    if (e.type === "enviada") { total -= e.qty; continue; }
     total += e.qty;
     if (e.date === today) hoje += e.qty;
   }
@@ -289,6 +293,9 @@ function render(entries) {
     const n = document.createElement("span"); n.className = "n";
     if (e.type === "extraviada") {
       const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = "Extraviadas";
+      n.appendChild(tag);
+    } else if (e.type === "enviada") {
+      const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = "Enviadas";
       n.appendChild(tag);
     }
     n.appendChild(document.createTextNode(e.note));
@@ -320,7 +327,7 @@ async function submitEntry(ev) {
     });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
-    setStatus(`${type === "extraviada" ? "Extraviadas registradas" : "Registrado"}: ${qty > 0 ? "+" : ""}${qty} em ${brDate(date)}.`, "ok");
+    setStatus(`${type === "extraviada" ? "Extraviadas registradas" : type === "enviada" ? "Quantidade enviada registrada" : "Registrado"}: ${qty > 0 ? "+" : ""}${qty} em ${brDate(date)}.`, "ok");
     $("qty").value = 0;
     $("note").value = "";
     await refresh();
@@ -344,12 +351,20 @@ function currentType() {
   return document.querySelector('input[name="type"]:checked').value;
 }
 function applyType() {
-  const lost = currentType() === "extraviada";
-  $("qtyLabel").textContent = lost ? "Mantas extraviadas" : "Quantidade de mantas";
+  const type = currentType();
+  const lost = type === "extraviada";
+  const sent = type === "enviada";
+  $("qtyLabel").textContent = lost
+    ? "Mantas extraviadas"
+    : sent
+      ? "Quantidade enviada"
+      : "Quantidade de mantas";
   $("qtyHint").textContent = lost
     ? "Use um valor negativo para corrigir um lançamento ou se a manta for encontrada."
-    : "Use um valor negativo para saídas ou correções.";
-  $("submit").textContent = lost ? "Registrar extraviadas" : "Registrar quantidade";
+    : sent
+      ? "Esse valor será subtraído do total acumulado."
+      : "Use um valor negativo para saídas ou correções.";
+  $("submit").textContent = lost ? "Registrar extraviadas" : sent ? "Registrar enviada" : "Registrar quantidade";
 }
 
 function bump(delta) {
