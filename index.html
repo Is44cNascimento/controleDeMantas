@@ -167,6 +167,10 @@
         <div class="label">Extraviadas</div>
         <div class="value" id="lost">–</div>
       </div>
+      <div class="stat secondary">
+        <div class="label">Enviadas</div>
+        <div class="value" id="sent">–</div>
+      </div>
     </div>
 
     <form id="form" novalidate>
@@ -270,16 +274,17 @@ async function load() {
 
 function render(entries) {
   const today = todayISO();
-  let total = 0, hoje = 0, lost = 0;
+  let total = 0, hoje = 0, lost = 0, sent = 0;
   for (const e of entries) {
     if (e.type === "extraviada") { lost += e.qty; total -= e.qty; continue; }
-    if (e.type === "enviada") { total -= e.qty; continue; }
+    if (e.type === "enviada") { sent += e.qty; total -= e.qty; continue; }
     total += e.qty;
     if (e.date === today) hoje += e.qty;
   }
   $("total").textContent = total;
   $("today").textContent = hoje;
   $("lost").textContent = lost;
+  $("sent").textContent = sent;
 
   const ul = $("history");
   ul.innerHTML = "";
