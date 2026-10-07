@@ -33,7 +33,6 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  /* Faixa de manta no topo: o único elemento "decorativo" */
   .edge {
     height: 22px;
     background:
@@ -120,6 +119,7 @@
   .history .q { font: 800 20px/1 var(--display); font-variant-numeric: tabular-nums; }
   .history .q.neg { color: var(--danger); }
   .tag { display: inline-block; font-size: 13px; font-weight: 600; color: var(--danger); border: 1.5px solid var(--danger); border-radius: 6px; padding: 0 6px; margin-right: 6px; }
+  .tag.sent { color: var(--teal); border-color: var(--teal); }
   .empty { color: var(--muted); padding: 16px; }
 
   .panel[hidden] { display: none; }
@@ -134,7 +134,7 @@
 <body>
 <div class="edge" aria-hidden="true"></div>
 <main>
-  <!-- LOGO: coloque o arquivo logo.png (ou troque o src abaixo) na mesma pasta do index.html -->
+  <!-- LOGO: coloque o arquivo grupoGuanabara.png na mesma pasta do index.html -->
   <div class="brand">
     <img src="grupoGuanabara.png" alt="Logo da empresa"
          onerror="this.hidden=true;document.getElementById('logoPh').hidden=false;">
@@ -214,12 +214,13 @@
 
 <script>
 /* ============ CONFIGURAÇÃO ============
-   Cole aqui a URL do Web App do Google Apps Script (termina em /exec). */
+   URL do Web App do Google Apps Script (termina em /exec). */
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwyfpCv05nU0sRPTKj1goBUU8CynmvTgvthb908dWr7sPWocwoAUFZnygdLS4ukLcps/exec";
 /* ====================================== */
 
 const $ = id => document.getElementById(id);
 const PIN_KEY = "mantas_pin";
+const SERVER_VERSION_MIN = 3;
 let allEntries = [];
 
 function todayISO() {
@@ -228,7 +229,7 @@ function todayISO() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 function brDate(iso) {
-  const [y, m, d] = iso.split("-");
+  const [y, m, d] = String(iso).split("-");
   return `${d}/${m}/${y}`;
 }
 function setStatus(msg, kind) {
@@ -246,6 +247,12 @@ function showPin(msg) {
 function showApp() {
   $("pinPanel").hidden = true;
   $("app").hidden = false;
+}
+
+function checkVersion(data) {
+  if (!data || Number(data.version) < SERVER_VERSION_MIN) {
+    setStatus('Atenção: o servidor está desatualizado. No Apps Script, use Implantar > Gerenciar implantações > Nova versão.', "err");
+  }
 }
 
 async function load() {
@@ -267,6 +274,7 @@ async function load() {
     }
     showApp();
     render(data.entries);
+    checkVersion(data);
   } catch (err) {
     showApp();
     setStatus("Não foi possível carregar os registros. Verifique a conexão e a URL do Web App.", "err");
@@ -312,11 +320,11 @@ function render(entries) {
 
   const ul = $("history");
   ul.innerHTML = "";
-  if (!entries.length) {
+  if (!allEntries.length) {
     ul.innerHTML = '<li class="empty">Nenhum registro ainda. Informe a quantidade de hoje acima.</li>';
     return;
   }
-  entries.slice(-10).reverse().forEach(e => {
+  allEntries.slice(-10).reverse().forEach(e => {
     const li = document.createElement("li");
     const d = document.createElement("span"); d.className = "d"; d.textContent = brDate(e.date);
     const n = document.createElement("span"); n.className = "n";
@@ -324,7 +332,7 @@ function render(entries) {
       const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = "Extraviadas";
       n.appendChild(tag);
     } else if (e.type === "enviada") {
-      const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = "Enviadas";
+      const tag = document.createElement("span"); tag.className = "tag sent"; tag.textContent = "Enviadas";
       n.appendChild(tag);
     }
     n.appendChild(document.createTextNode(e.note));
@@ -356,10 +364,17 @@ async function submitEntry(ev) {
     });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
-    setStatus(`${type === "extraviada" ? "Extraviadas registradas" : type === "enviada" ? "Quantidade enviada registrada" : "Registrado"}: ${qty > 0 ? "+" : ""}${qty} em ${brDate(date)}.`, "ok");
+
     $("qty").value = 0;
     $("note").value = "";
     await refresh();
+
+    // Depois do refresh, para a mensagem não ser apagada
+    if (data.type !== type) {
+      setStatus(`Atenção: o servidor gravou como "${data.type || "diario"}". Reimplante o Apps Script com uma nova versão.`, "err");
+    } else {
+      setStatus(`${type === "extraviada" ? "Extraviadas registradas" : type === "enviada" ? "Quantidade enviada registrada" : "Registrado"}: ${qty > 0 ? "+" : ""}${qty} em ${brDate(date)}.`, "ok");
+    }
   } catch (err) {
     setStatus("Não foi possível salvar. Confira a conexão e tente de novo.", "err");
   } finally {
